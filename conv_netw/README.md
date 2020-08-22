@@ -1,1 +1,0 @@
-# convolutional network classifier

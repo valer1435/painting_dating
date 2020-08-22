@@ -75,7 +75,7 @@ cpu = torch.device("cpu")
 
 
 
-final_model = joblib.load('sgd.pkl')
+final_model = joblib.load('linear_svc_balanced.pkl')
 
 target_dict= {
     0: "до 1300",
@@ -111,9 +111,9 @@ def make_prediction(img, device):
 
     predicted_period = target_dict[res]
     
-    fig, ax = plt.subplots()
-    ax.imshow(img)
-    ax.set_title(f"Наиболее вероятный период написания картины: {predicted_period}")
+    #  fig, ax = plt.subplots()
+    #  ax.imshow(img)
+    #  ax.set_title(f"Наиболее вероятный период написания картины: {predicted_period}")
     return res, predicted_period, img
 
 
@@ -121,4 +121,4 @@ trans = transforms.ToPILImage()
 
 img = Image.open("../resized_images/1751-1800/3211.jpg")
 
-make_prediction(img, device)
+print(make_prediction(img, device))

@@ -5,7 +5,7 @@
 ### Описание алгоритма
 Данные брались с сайта 
 https://www.wga.hu
-Для большего баланса классов было решено объединить период 201-1300 гг
+Для большего баланса классов было решено объединить период 201-1300 гг  
 ![](https://github.com/valer1435/painting_dating/blob/master/README/data.png)  
 Для решения задачи была использована следующая модель:
 ![](https://github.com/valer1435/painting_dating/blob/master/README/model_architecture.png)  

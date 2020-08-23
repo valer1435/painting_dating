@@ -82,23 +82,25 @@ transformations = transforms.Compose(
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 def make_prediction(img, device):
-    if img.size != (224, 224):
-        img = img.resize((224, 244))
-    img_tensor = transformations(img)
-    G_matrix = cut_vgg19(torch.reshape(img_tensor, (1, 3, 224, 224)).to(device))
-    G_vector_numpy = G_matrix.to(cpu).detach().numpy().reshape((1,512*512))[0][mask]
-    res = final_model.predict(G_vector_numpy.reshape(1, -1)).item() - OFFSET
+	img = img.convert("RGB")
+	if img.size != (224, 224):
+		img = img.resize((224, 224))
+	print(img.size)
+	img_tensor = transformations(img)
+	G_matrix = cut_vgg19(torch.reshape(img_tensor, (1, 3, 224, 224)).to(device))
+	G_vector_numpy = G_matrix.to(cpu).detach().numpy().reshape((1,512*512))[0][mask]
+	res = final_model.predict(G_vector_numpy.reshape(1, -1)).item() - OFFSET
 
-    predicted_period = target_dict[res]
-    
-    #  fig, ax = plt.subplots()
-    #  ax.imshow(img)
-    #  ax.set_title(f"Наиболее вероятный период написания картины: {predicted_period}")
-    return res, predicted_period, img
+	predicted_period = target_dict[res]
+
+	#  fig, ax = plt.subplots()
+	#  ax.imshow(img)
+	#  ax.set_title(f"Наиболее вероятный период написания картины: {predicted_period}")
+	return res, predicted_period, img
 
 
 trans = transforms.ToPILImage()
 
-img = Image.open("../resized_images/1751-1800/3211.jpg")
+img = Image.open("../renessans.jpg")
 
 print(make_prediction(img, device))

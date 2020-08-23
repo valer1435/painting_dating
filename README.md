@@ -19,7 +19,6 @@ https://www.wga.hu
 
 На тестовой выборке модель показала следующие результаты:
 - MSE: 4  
-- F1-score: 0.49  
-- accuracy: 0.5  
+- F1-score: 0.49   
 Confusion matrix:
  ![](https://github.com/valer1435/painting_dating/blob/master/README/results.png)  

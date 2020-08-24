@@ -1,106 +1,100 @@
 from PIL import Image
 import torch
-import random
-import matplotlib.pyplot as plt
-import torch.nn as nn
-import torch.nn.functional as F
+
 import torchvision.models as models
 from torchvision import transforms
 
-from sklearn.linear_model import SGDClassifier
 import joblib
+import numpy as np
 
 
+class PeriodPredictor:
+    PATH_TO_VGG = 'cut_vgg19.pth'
+    PATH_TO_FINAL_MODEL = 'linear_svc_balanced.pkl'
+    PATH_TO_FEATURE_MASK = 'features8000.npy'
+    transformations = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ]
+    )
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    INPUT_SIZE = (224, 224)
 
-
-class StyleMatrix(nn.Module):
+    NUM_CHANNELS = 3
+    INPUT_IMAGE_WIDTH = 224
+    OUTPUT_GRAM_VECTOR_LENGTH = 512 * 512
+    target_dict = {
+        0: "до 1300",
+        1: "1300-1350",
+        2: "1351-1400",
+        3: "1401-1450",
+        4: "1451-1500",
+        5: "1501-1550",
+        6: "1551-1600",
+        7: "1601-1650",
+        8: "1651-1700",
+        9: "1701-1750",
+        10: "1751-1800",
+        11: "1801-1850",
+        12: "1851-1900",
+    }
+    OFFSET = 16
 
     def __init__(self):
-        super(StyleMatrix, self).__init__()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.cpu = torch.device("cpu")
 
-    def forward(self, inp):
-        G = gram_matrix(inp)
-        return G
-    
-def gram_matrix(inp):
-    a, b, c, d = inp.size()  # a=batch size(=1)
-    # b=number of feature maps
-    # (c,d)=dimensions of a f. map (N=c*d)
+        self.cut_cnn = torch.nn.Sequential(
+            *(list(models.vgg19(pretrained=False).features.to(self.device).children())[:26]))
+        self.cut_cnn.load_state_dict(torch.load(PeriodPredictor.PATH_TO_VGG))
+        self.cut_cnn.eval()
 
-    features = inp.view(a * b, c * d).to(device)  # resise F_XL into \hat F_XL
+        self.final_model = joblib.load(PeriodPredictor.PATH_TO_FINAL_MODEL)
 
-    G = torch.mm(features, features.t())  # compute the gram product
+        self.features_mask = np.load(PeriodPredictor.PATH_TO_FEATURE_MASK)
 
-    # we 'normalize' the values of the gram matrix
-    # by dividing by the number of element in each feature maps.
-    return G.div(a * b * c * d)
+    @staticmethod
+    def resize_and_convert_if_need(image):
+        image = image.convert('RGB')
+        if image.size != PeriodPredictor.INPUT_SIZE:
+            image = image.resize(PeriodPredictor.INPUT_SIZE)
+        return image
 
+    def gram_matrix(self, inp):
+        a, b, c, d = inp.size()  # a=batch size(=1)
+        # b=number of feature maps
+        # (c,d)=dimensions of a f. map (N=c*d)
 
-from numpy import load
+        features = inp.view(a * b, c * d).to(self.device)  # resise F_XL into \hat F_XL
 
-mask = load('features8000.npy')
-len(mask)
+        G = torch.mm(features, features.t())  # compute the gram product
 
+        # we 'normalize' the values of the gram matrix
+        # by dividing by the number of element in each feature maps.
+        return G.div(a * b * c * d)
 
-PATH_TO_VGG = "cutted_vgg19.pth"
-cnn = models.vgg19(pretrained=False).features.to(device)
-cut_vgg19 = torch.nn.Sequential(*(list(cnn.children())[:26])+[StyleMatrix()])
+    def predict(self, x):
+        x = PeriodPredictor.transformations(x)
 
-cut_vgg19.load_state_dict(torch.load(PATH_TO_VGG))
-cut_vgg19.eval()
+        g_matrices_tensor = self.gram_matrix(self.cut_cnn(
+            torch.reshape(x, (-1,
+                              PeriodPredictor.NUM_CHANNELS,
+                              PeriodPredictor.INPUT_IMAGE_WIDTH,
+                              PeriodPredictor.INPUT_IMAGE_WIDTH)
+                          ).to(self.device)
+            )
+        )
 
-cpu = torch.device("cpu")
+        g_vectors_numpy = g_matrices_tensor.to(self.cpu).detach().numpy().reshape((-1,
+                                                                                   PeriodPredictor.OUTPUT_GRAM_VECTOR_LENGTH)
+                                                                                  )[0][self.features_mask]
+        res = self.final_model.predict(g_vectors_numpy.reshape(1, -1)).item() - PeriodPredictor.OFFSET
 
-
-
-final_model = joblib.load('linear_svc_balanced.pkl')
-
-target_dict= {
-    0: "до 1300",
-    1:"1300-1350",
-    2:"1351-1400",
-    3:"1401-1450",
-    4:"1451-1500",
-    5:"1501-1550",
-    6:"1551-1600",
-    7:"1601-1650",
-    8:"1651-1700",
-    9:"1701-1750",
-    10:"1751-1800",
-    11:"1801-1850",
-    12:"1851-1900",
-}
-
-OFFSET = 16
+        return PeriodPredictor.target_dict[res]
 
 
-
-transformations = transforms.Compose(
-        [transforms.ToTensor(),
-         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-def make_prediction(img, device):
-	img = img.convert("RGB")
-	if img.size != (224, 224):
-		img = img.resize((224, 224))
-	print(img.size)
-	img_tensor = transformations(img)
-	G_matrix = cut_vgg19(torch.reshape(img_tensor, (1, 3, 224, 224)).to(device))
-	G_vector_numpy = G_matrix.to(cpu).detach().numpy().reshape((1,512*512))[0][mask]
-	res = final_model.predict(G_vector_numpy.reshape(1, -1)).item() - OFFSET
-
-	predicted_period = target_dict[res]
-
-	#  fig, ax = plt.subplots()
-	#  ax.imshow(img)
-	#  ax.set_title(f"Наиболее вероятный период написания картины: {predicted_period}")
-	return res, predicted_period, img
-
-
-trans = transforms.ToPILImage()
-
-img = Image.open("../renessans.jpg")
-
-print(make_prediction(img, device))
+if __name__ == '__main__':
+    img = PeriodPredictor.resize_and_convert_if_need(Image.open("1898.jpg"))
+    predictor = PeriodPredictor()
+    print(predictor.predict(img))

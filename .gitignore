@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 resized_images/
+resized_images_augmentated/
 *.csv

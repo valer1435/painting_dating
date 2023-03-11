@@ -1,24 +1,24 @@
-### Введение
-Данный проект был написан в рамках хакатона, проводимого летней школой СЛОН http://school-slon.ru/. В рамках выполнения задания была построена модель для определения временной принадлежности картины/фрески к тому или иному историческому периоду.
+### Abstract
+This project was created for http://school-slon.ru/ hackathon. As part of the assignment model for determining time period painting is belonged was designed. 
 
 
-### Описание алгоритма
-Данные брались с сайта 
+### Proposed approach
+Firtly we downloaded a large amount of data with paintings from 
 https://www.wga.hu
-Для большего баланса классов было решено объединить период 201-1300 гг  
+For better class balance we decided to unite classes beloged to 201-1300 гг  
 ![](https://github.com/valer1435/painting_dating/blob/master/README/data.png)  
-Для решения задачи была использована следующая модель:
+For solving task this architecture was chosen:
 ![](https://github.com/valer1435/painting_dating/blob/master/README/model_architecture.png)  
-- Сеть vgg19 до слоя conv_5_1 (1)
-- Преобразование выходного слоя (1) в Грамоподобную матрицу (2)
-- Отбор 8000 фич из (2)
-- SVC c 13 классами
+- Vgg19 network up to conv_5_1 (1)
+- Applying gram matrix (2) transformation for (1) 
+- Filtering 8000 features from (2)
+- SVC with 13 classes
 
 
-# Результаты
+# Results
 
-На тестовой выборке модель показала следующие результаты:
-- MSE: 4  
+On test set we've got sush results:
+- MSE: 4  (it means the model wrong on one century in average)
 - F1-score: 0.5  
 Confusion matrix:
  ![](https://github.com/valer1435/painting_dating/blob/master/README/results.png)  
